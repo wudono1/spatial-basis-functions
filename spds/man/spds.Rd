@@ -6,5 +6,5 @@
 \alias{spds}
 \title{spds: Spatial-statistical downscaling with uncertainty quantification}
 \description{
-Downscale coarse-resolution data to fine resolutions using a GPB (Gaussian process over Basic Areal Units). Reference: Zheng, X., Cressie, N., Clarke, D. A., McGeoch, M. A., and Zammit-Mangion, A. (2025). Spatial-statistical downscaling with uncertainty quantification in biodiversity modelling.
+Downscale coarse-resolution data to fine resolutions using a GPB (Gaussian process over Basic Areal Units). Reference: Zheng, X., Cressie, N., Clarke, D. A., McGeoch, M. A., and Zammit-Mangion, A. (2025). Spatial-statistical downscaling with uncertainty quantification in biodiversity modelling. This fork adds a basis-function variant (gpbau_new / predict.gpbau_new) in which the spatial process is represented by r basis functions with coefficients alpha ~ N(0, sigmasq * K_psi), giving a block covariance K_B = W_B phi(S)' K_psi phi(S) W_B'. Because the fine-scale variation term delta(S) is assumed zero, K_B has rank at most min(M_D, r); the number of basis functions must therefore satisfy r >= M_D (number of coarse blocks) for the model to be well posed.
 }

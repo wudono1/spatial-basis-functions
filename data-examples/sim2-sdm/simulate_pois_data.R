@@ -4,8 +4,9 @@
 ################################################################################
 rm(list = ls())
 
-inpath <- "input/from/sim1-downscaling/"
-outpath <- "output/to/sim2-pois/"
+inpath  <- "../outputs/sim1-downscaling/"
+outpath <- "../outputs/sim2-pois/"
+dir.create(outpath, recursive = TRUE, showWarnings = FALSE)
 
 set.seed(42)
 

@@ -4,9 +4,10 @@
 ################################################################################
 rm(list = ls())
 
-inpath1 <- "input/from/sim1-downscaling/"
-inpath2 <- "input/from/sim2-pois/"
-outpath <- "output/to/sim2-pois/"
+inpath1 <- "../outputs/sim1-downscaling/"
+inpath2 <- "../outputs/sim2-pois/"
+outpath <- "../outputs/sim2-pois/"
+dir.create(outpath, recursive = TRUE, showWarnings = FALSE)
 
 set.seed(42)
 
@@ -24,12 +25,13 @@ load(paste0(inpath1, "sim_gpbau_pred.RData"))
 
 # load response data
 load(paste0(inpath2, "pois_rep_data.rdata"))
-nrep <- length(rep_data)
+# nrep <- length(rep_data)
+nrep <- min(3, length(rep_data))
 
 #-------------------------------------------------------------------------------
 # source model-fit function
 #-------------------------------------------------------------------------------
-source("directory/to/source_functions.R")
+source("sim2-sdm/source_functions.R")
 
 
 #-------------------------------------------------------------------------------

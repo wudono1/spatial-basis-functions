@@ -1,12 +1,15 @@
 ################################################################################
 # Section 4.2 Simulation study: Model fitting and uncertainty propagation
 # Calculate results using the fitted GLMs
+# compute bias and 95% coverage on downscaled covariates B1
+# also compute RMSE and 95% predictive coverage across GLM predicted response
 ################################################################################
 rm(list = ls())
 
-inpath1 <- "input/from/sim1-downscaling/"
-inpath2 <- "input/from/sim2-pois/"
-outpath <- "output/to/sim2-pois/"
+inpath1 <- "../outputs/sim1-downscaling/"
+inpath2 <- "../outputs/sim2-pois/"
+outpath <- "../outputs/sim2-pois/"
+dir.create(outpath, recursive = TRUE, showWarnings = FALSE)
 
 
 #-------------------------------------------------------------------------------
@@ -21,7 +24,8 @@ source("directory/to/source_functions.R")
 
 nphi <- dim(fine_xx)[2]
 nsill <- dim(fine_xx)[3]
-nrep <- length(rep_data)
+# nrep <- length(rep_data)
+nrep <- length(pois_rep_out)
 
 
 #-------------------------------------------------------------------------------
@@ -43,7 +47,11 @@ plan(multisession, workers = min(ncores, nrange * nsill))
 # Evaluate models
 #-------------------------------------------------------------------------------
 pois_mods_metrics <- vector("list", length = nrep)
+
+# conputes B0 + B1x (no uncertainty)
 hfunc1 <- function(x, be) cbind(1, x) %*% be
+
+# computes B0 + B1x + d (with undertainty)
 hfunc2 <- function(x, be, delta) cbind(1, x) %*% be + delta
 
 cat("-------------------------------------------------------------------------\n")

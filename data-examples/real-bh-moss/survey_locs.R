@@ -7,8 +7,9 @@ rm(list = ls())
 library(dplyr)
 library(readr)
 
-inpath <- "from/data/input/"
-outpath <- "output/to/real-bh-moss/"
+inpath  <- "../data/"
+outpath <- "../outputs/real-bh-moss/"
+dir.create(outpath, recursive = TRUE, showWarnings = FALSE)
 
 
 #-------------------------------------------------------------------------------

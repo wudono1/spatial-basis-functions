@@ -28,6 +28,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fitGPBAU_new
+List fitGPBAU_new(const arma::colvec& xB, const arma::mat& RB, const List& prior, const List& starting, const List& tuning, const List& mod_param, const List& mcmc_settings);
+RcppExport SEXP _spds_fitGPBAU_new(SEXP xBSEXP, SEXP RBSEXP, SEXP priorSEXP, SEXP startingSEXP, SEXP tuningSEXP, SEXP mod_paramSEXP, SEXP mcmc_settingsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type xB(xBSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type RB(RBSEXP);
+    Rcpp::traits::input_parameter< const List& >::type prior(priorSEXP);
+    Rcpp::traits::input_parameter< const List& >::type starting(startingSEXP);
+    Rcpp::traits::input_parameter< const List& >::type tuning(tuningSEXP);
+    Rcpp::traits::input_parameter< const List& >::type mod_param(mod_paramSEXP);
+    Rcpp::traits::input_parameter< const List& >::type mcmc_settings(mcmc_settingsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fitGPBAU_new(xB, RB, prior, starting, tuning, mod_param, mcmc_settings));
+    return rcpp_result_gen;
+END_RCPP
+}
 // predGPBAU2
 arma::mat predGPBAU2(const arma::colvec& y, const arma::mat& X, const List& post_sams, const List& mod_param, const int& nreport);
 RcppExport SEXP _spds_predGPBAU2(SEXP ySEXP, SEXP XSEXP, SEXP post_samsSEXP, SEXP mod_paramSEXP, SEXP nreportSEXP) {
@@ -58,6 +75,36 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// predGPBAU2_new
+arma::mat predGPBAU2_new(const arma::colvec& xB, const arma::mat& Rtilde, const List& post_sams, const List& mod_param, const int& nreport);
+RcppExport SEXP _spds_predGPBAU2_new(SEXP xBSEXP, SEXP RtildeSEXP, SEXP post_samsSEXP, SEXP mod_paramSEXP, SEXP nreportSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type xB(xBSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Rtilde(RtildeSEXP);
+    Rcpp::traits::input_parameter< const List& >::type post_sams(post_samsSEXP);
+    Rcpp::traits::input_parameter< const List& >::type mod_param(mod_paramSEXP);
+    Rcpp::traits::input_parameter< const int& >::type nreport(nreportSEXP);
+    rcpp_result_gen = Rcpp::wrap(predGPBAU2_new(xB, Rtilde, post_sams, mod_param, nreport));
+    return rcpp_result_gen;
+END_RCPP
+}
+// predGPBAU3_new
+arma::mat predGPBAU3_new(const arma::colvec& xB, const arma::mat& Rtilde, const List& post_sams, const List& mod_param, const int& nreport);
+RcppExport SEXP _spds_predGPBAU3_new(SEXP xBSEXP, SEXP RtildeSEXP, SEXP post_samsSEXP, SEXP mod_paramSEXP, SEXP nreportSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type xB(xBSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Rtilde(RtildeSEXP);
+    Rcpp::traits::input_parameter< const List& >::type post_sams(post_samsSEXP);
+    Rcpp::traits::input_parameter< const List& >::type mod_param(mod_paramSEXP);
+    Rcpp::traits::input_parameter< const int& >::type nreport(nreportSEXP);
+    rcpp_result_gen = Rcpp::wrap(predGPBAU3_new(xB, Rtilde, post_sams, mod_param, nreport));
+    return rcpp_result_gen;
+END_RCPP
+}
 // expCorr
 arma::mat expCorr(const arma::mat& distmat, const double& phi);
 RcppExport SEXP _spds_expCorr(SEXP distmatSEXP, SEXP phiSEXP) {
@@ -73,8 +120,11 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_spds_fitGPBAU", (DL_FUNC) &_spds_fitGPBAU, 7},
+    {"_spds_fitGPBAU_new", (DL_FUNC) &_spds_fitGPBAU_new, 7},
     {"_spds_predGPBAU2", (DL_FUNC) &_spds_predGPBAU2, 5},
     {"_spds_predGPBAU3", (DL_FUNC) &_spds_predGPBAU3, 5},
+    {"_spds_predGPBAU2_new", (DL_FUNC) &_spds_predGPBAU2_new, 5},
+    {"_spds_predGPBAU3_new", (DL_FUNC) &_spds_predGPBAU3_new, 5},
     {"_spds_expCorr", (DL_FUNC) &_spds_expCorr, 2},
     {NULL, NULL, 0}
 };

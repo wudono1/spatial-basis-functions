@@ -5,12 +5,24 @@ fitGPBAU <- function(y, X, prior, starting, tuning, mod_param, mcmc_settings) {
     .Call(`_spds_fitGPBAU`, y, X, prior, starting, tuning, mod_param, mcmc_settings)
 }
 
+fitGPBAU_new <- function(xB, RB, prior, starting, tuning, mod_param, mcmc_settings) {
+    .Call(`_spds_fitGPBAU_new`, xB, RB, prior, starting, tuning, mod_param, mcmc_settings)
+}
+
 predGPBAU2 <- function(y, X, post_sams, mod_param, nreport) {
     .Call(`_spds_predGPBAU2`, y, X, post_sams, mod_param, nreport)
 }
 
 predGPBAU3 <- function(y, X, post_sams, mod_param, nreport) {
     .Call(`_spds_predGPBAU3`, y, X, post_sams, mod_param, nreport)
+}
+
+predGPBAU2_new <- function(xB, Rtilde, post_sams, mod_param, nreport) {
+    .Call(`_spds_predGPBAU2_new`, xB, Rtilde, post_sams, mod_param, nreport)
+}
+
+predGPBAU3_new <- function(xB, Rtilde, post_sams, mod_param, nreport) {
+    .Call(`_spds_predGPBAU3_new`, xB, Rtilde, post_sams, mod_param, nreport)
 }
 
 expCorr <- function(distmat, phi) {

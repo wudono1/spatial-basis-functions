@@ -1,7 +1,7 @@
 ################################################################################
 # Master function: run all R scripts 
 ################################################################################
-setwd("set/directory/to/data-examples/")
+setwd("~/Documents/GitHub/corgi-examples/data-examples")
 
 #-------------------------------------------------------------------------------
 # Simulate fine-resolution covariate data
@@ -15,6 +15,15 @@ source("simulate_covariate_data.R")
 # The downscaled data will be used for both simulation studies 1 and 2
 #-------------------------------------------------------------------------------
 source("sim1-downscaling/downscale_gpbau.R")
+
+
+#-------------------------------------------------------------------------------
+# Parameter-recovery check for the basis-function GPB model
+# Verifies that the MCMC recovers the known simulation truth
+# (psi = range_vals[i], sigmasq = sill_vals[j], gamma0 = 0) before any of the
+# downstream results are trusted.
+#-------------------------------------------------------------------------------
+source("sim1-downscaling/downscale_param_recovery.R")
 
 
 #-------------------------------------------------------------------------------

@@ -9,8 +9,9 @@ library(ggplot2)
 library(sf)
 library(dplyr)
 
-inpath <- "from/data/input/"
-outpath <- "output/to/real-bh-moss/"
+inpath  <- "../data/"
+outpath <- "../outputs/real-bh-moss/"
+dir.create(outpath, recursive = TRUE, showWarnings = FALSE)
 
 
 #-------------------------------------------------------------------------------

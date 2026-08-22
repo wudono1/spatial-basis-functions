@@ -4,12 +4,16 @@
 ################################################################################
 rm(list = ls())
 
-inpath <- "output/to/sim1-downscaling/"
-outpath <- "output/to/sim1-downscaling/downscaling-comp/"
+inpath  <- "../outputs/sim1-downscaling/" 
+outpath <- "../outputs/sim1-downscaling/downscaling-comp/"
+dir.create(outpath, recursive = TRUE, showWarnings = FALSE)
 
 library(mgcv)
 
+# from downscale_gpbau.R (fine grained posterior samples)
 load(paste0(inpath, "sim_gpbau_pred.RData"))
+
+# from simulate_covariate_data.R (contains TRUE fine-grained covariate field)
 load(paste0(inpath, "covar_dat.rdata"))
 
 set.seed(42)
@@ -17,6 +21,8 @@ set.seed(42)
 #-------------------------------------------------------------------------------
 # GPB
 #-------------------------------------------------------------------------------
+
+# building 95% confidence interval
 gpbau_pred <- xx_pred[[1]][[1]]
 gpbau_pred_qq <- apply(gpbau_pred, 1, function(x) quantile(x, probs = c(0.025, 0.975)))
 
@@ -25,6 +31,8 @@ low_ind <- xx >= gpbau_pred_qq[1,]
 hig_ind <- xx <= gpbau_pred_qq[2,]
 gpbau_pred_ci <- mean(low_ind * hig_ind)
 
+
+# plotting coverage on map
 gpbau_field <- data.frame(lon = fine_grid$lon, lat = fine_grid$lat, gpbau = rowMeans(gpbau_pred))
 plot_save <- ggplot(gpbau_field, aes(x = lon, y = lat, fill = gpbau)) +
   geom_raster(interpolate = F) + theme_bw() +
@@ -68,7 +76,7 @@ print(plot_save)
 dev.off()
 
 #-------------------------------------------------------------------------------
-# TPRS
+# TPRS (thin-plate splines)
 #-------------------------------------------------------------------------------
 # cross validation to select k
 Md <- nrow(coar_xx)

@@ -6,9 +6,10 @@ rm(list = ls())
 
 myPalette <- colorRampPalette(rev(RColorBrewer::brewer.pal(11, "Spectral")))
 
-inpath1 <- "from/real-bh-moss/"
-inpath2 <- "from/data/input/"
-outpath <- "output/to/real-bh-moss/"
+inpath1 <- "../outputs/real-bh-moss/"
+inpath2 <- "../data/"
+outpath <- "../outputs/real-bh-moss/"
+dir.create(outpath, recursive = TRUE, showWarnings = FALSE)
 
 library(terra)
 library(RColorBrewer)

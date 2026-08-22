@@ -1,0 +1,21 @@
+# R session junk
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Compiled code
+*.o
+*.so
+*.dll
+src/*.o
+src/*.so
+
+# Saved R objects / large outputs
+*.RData
+*.rdata
+*.rds
+*.Rds
+
+# macOS
+.DS_Store
