@@ -1,16 +1,18 @@
 
 ## CORGI (Change Of Resolution in GLM Inference)
 
-This repository contains an implementation in R and C++ of spatial-statistical downscaling using basis-function models for biodiversity modelling. The methods in this repository are inspired by the paper
-
-
-
-
-scripts to reproduce the numerical results in
+This repository contains an implementation in R and C++ of spatial-statistical downscaling using basis-function models for biodiversity modelling. The code in this repository is based on 
 
 Zheng, X., Cressie, N., Clarke, D. A., McGeoch, M. A., and Zammit-Mangion, A. (2025). 
 "Spatial-statistical downscaling with uncertainty quantification in biodiversity modelling". To appear in *Methods in Ecology and Evolution*.
 <!-- NIASRA Working Paper Series 06-24. URL: [https://www.uow.edu.au/niasra/publications/](https://www.uow.edu.au/niasra/publications/) -->
+
+and its corresponding repository [here](https://github.com/xzheng42/corgi-examples).
+
+The basis-function implementation draws from
+
+Cressie, N., Sainsbury-Dale, M., and Zammit-Mangion, A. (2022). "Basis-Function Models in Spatial Statistics"
+
 
 ### A two-stage protocol for biodiversity inference
 
