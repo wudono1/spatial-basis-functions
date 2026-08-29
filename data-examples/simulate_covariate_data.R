@@ -6,8 +6,8 @@ rm(list = ls())
 outpath <- "../outputs/sim1-downscaling/"
 dir.create(outpath, recursive = TRUE, showWarnings = FALSE)
 
-library(SpatialExtremes)
 library(ggplot2)
+library(MASS)
 library(dplyr)
 library(fields)
 
@@ -66,36 +66,34 @@ D <- rdist(fine_grid, fine_grid_knots)
 Phi <- exp(-D^2 / (2 * length_scale^2))
 
 
-for (i in seq(range_vals)) {
-  for (j in seq(sill_vals)) {
-    
-    # Spatial Extremes::rgp- simulates Gaussian random field
-    # rgp(n, coord, cov.mod = "powexp", mean = 0, nugget = 0, sill = 1, range
-    #     = 1, smooth = 1, grid = FALSE, control = list())
+# psi     = range_vals[i] : correlation range of the basis coefficients
+# sigmasq = sill_vals[j]  : marginal variance of the basis coefficients
+#
+# alpha ~ N(0, sigmasq * K_psi), with K_psi = exp(-d / psi) over the knot
+# centroids (manuscript Eq. 8). This is deliberately the same construction as
+# expCorr() in the sampler, so the simulation and the MCMC build an identical
+# K_psi from the same centroid_distmat.
+mu_alpha <- rep(0, num_knots)
 
-    # sill = variance of the process
-    # range = how quickly spatial correlation decreases with distance
-      
-    # coefficients of the basis functions are distributed to N(, sigma^2 K),
-    # where K is an exponential kernel
-    
-    # alpha is MVN distribution not RGP
-    # all components indep
-    alpha <- t(rgp(1, fine_grid_knots, cov.mod = "powexp", nugget = 0, smooth = 1,
-                    sill = sill_vals[j], range = range_vals[i]))
+for (i in seq_along(range_vals)) {
+  for (j in seq_along(sill_vals)) {
 
-    
-    # multiply alpha and Phi to get the complete field
+    # cov(alpha) = sigmasq * K_psi
+    K_psi <- sill_vals[j] * exp(-centroid_distmat / range_vals[i])
+
+    alpha <- mvrnorm(n = 1, mu = mu_alpha, Sigma = K_psi)
+
+    # multiply Phi and alpha to get the complete field
     xx <- Phi %*% alpha
-    
+
     # store the data
     fine_xx[, i, j] <- xx
-    
-    dat <- data.frame(fine_grid, xx = xx)
   }
 }
 
-# old code
+# old code: the pre-basis-function version. It simulated the field directly
+# as a GP over the fine grid (manuscript Eq. 1) rather than as Phi %*% alpha
+# (Eq. 8). Kept for reference; needs library(SpatialExtremes) if revived.
 
 
 # for (i in seq(range_vals)) {
@@ -145,9 +143,9 @@ coar_grid <- data.frame(lon = coar_lon, lat = coar_lat)
 # in 4.1, pretend that we only observe coarse-resolution covariates
 coar_xx <- array(NA, dim = c(mm, length(range_vals), length(sill_vals)))
 
-for (i in seq(range_vals)) {
+for (i in seq_along(range_vals)) {
   
-  for (j in seq(sill_vals)) {
+  for (j in seq_along(sill_vals)) {
     
     xx <- fine_xx[, i, j]
     xxb <- aggregate(xx, by = list(fine_grid$par_label), mean)$x
