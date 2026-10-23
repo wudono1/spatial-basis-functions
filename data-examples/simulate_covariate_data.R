@@ -24,8 +24,8 @@ set.seed(42)
 
 # 8 range values, 5 sill values
 # each (range, sill) pair is a different GP, so 40 GP's total
-range_vals <- seq(0.1, 0.8, by = 0.1)
-sill_vals <- seq(1, 5, by = 1)
+range_vals <- seq(0.1, 0.8, by = 0.1) # true psi values
+sill_vals <- seq(1, 5, by = 1) # true sigma values
 
 # build fine grid axes (50 points in x, 60 points in y)
 x_seq <- seq(0, 1, length = 50)

@@ -43,6 +43,8 @@ for (i in seq_len(nrange)) {
                    sigmasq = as.numeric(ps$sigmasq),
                    gamma0  = as.numeric(ps$beta))
     
+    
+    # true values
     truths <- list(psi     = range_vals[i],
                    sigmasq = sill_vals[j],
                    gamma0  = 0)
