@@ -71,37 +71,58 @@ thinning <- function(object, nburn, nthin) {
 #'   
 #' @export
 #' 
+
+# runs once per MCMC run to get starting state t(0) of MCMC chain. 
+# Proposal at t(1) is centered at t(0) state
+# note: phi = psi in this function
 findinit <- function(xxb, mod_param, phi_vals, n_sigmasq) {
   
+  # xxb = X_B, covar = R_B, aggmat = W_B, distmat = N_D x N_D distance matrix between BAU's
   data <- list(resp = xxb, covar = as.matrix(rep(1, length(xxb))),
                aggmat = mod_param$aggmat, distmat = mod_param$bau_distmat)
   
+  # empty list of log-likelihood and σ^2 values to be filled
   ll_vals <- array(NA, dim = c(length(phi_vals), n_sigmasq))
   sigmasq_vals <- array(NA, dim = c(length(phi_vals), n_sigmasq))
   
   # Calculate GPB's log likelihood over a grid 
+  
+  # computing one starting pair (ψ⁽⁰⁾, σ²⁽⁰⁾) for each 
+  # from simulate_covariate_data.R
+  
+  # outer loop: one pass per ψ candidate (pre-computed from phi_vals) to make
+  # amount of candidate σ^2 values determined by n_sigmasq (5 in downscale_gpbau.R)
   for (k in seq_along(phi_vals)) {
     
-    ww <- data$aggmat
-    bau_covmat <- exp(-data$distmat / phi_vals[k])
-    coar_covmat <- ww %*% bau_covmat %*% t(ww)
+    ww <- data$aggmat   # aggregation matrix
+    
+    # build BAU-level correlation matrix for sigma, aggregate to block-level
+    bau_covmat <- exp(-data$distmat / phi_vals[k])  # K_ψ = exp(-dist_bau / Ψ), N_D x N_D corr matrix
+    coar_covmat <- ww %*% bau_covmat %*% t(ww)      # K_B(Ψ) = W_B * K_Ψ * W_B^T
+    
+    # choosing the σ^2 models to try
     ratio <- diag(coar_covmat)[1]
+    
+    # _lb, _ub: lower and upper bounds of σ^2 values to try
     sigmasq_lb <- var(xxb) / ratio
-    sigmasq_ub <- var(xxb) / ratio * 3
+    sigmasq_ub <- var(xxb) / ratio * 3  # upper bounds is 3x lower bound
     sigmasq_seq <- seq(sigmasq_lb, sigmasq_ub, length = n_sigmasq)
     sigmasq_vals[k, ] <- sigmasq_seq
     
+    # inner loop: one pass per σ^2_kl value to find log likelihood 
+    # under (ψ⁽⁰⁾, σ²⁽⁰⁾) pair
     for (l in seq_along(sigmasq_seq)) {
       param <- c(phi_vals[k], sigmasq_seq[l], mean(xxb))
-      ll_vals[k, l] <- gpbauLoglik(param, data)
+      ll_vals[k, l] <- gpbauLoglik(param, data)  # calc log-likelihood at (ψ_k, σ²_l)
       # cat(paste0("done the ", k, "-", l, "th eval for the ", i,"-", j, " iter.\n"))
     }
   }
   
-  # Find the largest log likelihood from the grid
+  # find the (ψ⁽⁰⁾, σ²⁽⁰⁾) pair in ll_vals with largest log-likelihood
   idx <- as.numeric(which(ll_vals == max(ll_vals), arr.ind = TRUE))
 
-  # output
+  # output entire matrix of candidate value pairs (ψ⁽⁰⁾, σ²⁽⁰⁾) as well
+  # as pair with highest log-likelihood
   list(ll_vals = ll_vals, 
        sigmasq_vals = sigmasq_vals,
        phi_init = phi_vals[idx[1]],
@@ -109,7 +130,7 @@ findinit <- function(xxb, mod_param, phi_vals, n_sigmasq) {
   
 }
   
-# log loglikhood
+# function to calculate log likelihood
 gpbauLoglik <- function(param, data) {
   
   phi <- param[1]
@@ -126,7 +147,7 @@ gpbauLoglik <- function(param, data) {
   ee <- yy - rr %*% be
 
   logdet <- as.numeric(determinant(coar_covmat)[[1]])
-  ll <- -.5 * t(ee) %*% solve(coar_covmat, ee) - .5 * logdet
+  ll <- -.5 * t(ee) %*% solve(coar_covmat, ee) - .5 * logdet  # eqn S4.1 in Supporting Info
 
   ll
 
@@ -152,11 +173,14 @@ gpbauLoglik <- function(param, data) {
 #'
 findinit_new <- function(xxb, mod_param, phi_vals, n_sigmasq) {
 
-  # DIFFERENCE vs findinit(): the old version carried mod_param$bau_distmat
-  # (Nd x Nd) and rebuilt an Nd x Nd exponential matrix for EVERY phi value.
-  # Here Psi_B = W_B %*% Phi (Md x r) does not depend on psi, so it is computed
-  # ONCE outside the grid loop; only the small r x r kernel is rebuilt per psi.
   PsiB <- mod_param$aggmat %*% mod_param$Phi
+  
+  # distance between centroid to every other centroid (bfs, r x r) instead of 
+  # between BAU to every other BAU (N_d x N_d). Since r << N_d, instead of
+  # recalculating N_d for every candidate (in old findinit() method), only 
+  # an r x r matrix needs to be recalculated for every candidate in 
+  # findinit_new() This is because Psi_B = W_B %*% Phi (Md x r) 
+  # does not depend on psi, so it is computed ONCE outside the grid loop
   centroid_distmat <- mod_param$centroid_distmat
 
   data <- list(resp = xxb, covar = as.matrix(rep(1, length(xxb))),
@@ -170,6 +194,11 @@ findinit_new <- function(xxb, mod_param, phi_vals, n_sigmasq) {
 
     # K_B(psi) on the CORRELATION scale (sigmasq factored out), so that the
     # ratio heuristic below is comparable to the original implementation.
+    
+    # recalculated every loop
+    # compared to findinit(), which has:
+    # bau_covmat <- exp(-data$distmat / phi_vals[k]) dim N_d x N_d
+    # Kpsi has dim r x r, with r << N_d, so findinit_new() more efficient
     Kpsi <- exp(-centroid_distmat / phi_vals[k])
     coar_covmat <- PsiB %*% Kpsi %*% t(PsiB)
 

@@ -61,7 +61,7 @@ centroid_distmat <- rdist(fine_grid_knots, fine_grid_knots)
 # dimensions (nn, num_knots)
 D <- rdist(fine_grid, fine_grid_knots)
 
-# radial basis function calculation
+# creating the basis functions thru radial basis function calculation
 # will multiple with alpha, which is calculated in the nested loop
 Phi <- exp(-D^2 / (2 * length_scale^2))
 

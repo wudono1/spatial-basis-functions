@@ -2,6 +2,7 @@
 #' 
 #' @description This function fits a Gaussian process over basic areal units (GPB) to
 #'              downscale coarse-resolution data via Markov Chain Monte Carlo simulations.
+#'              Section 2.2.2. in MEE. Outputs posterior sample from MEE 2.2.2. and S4 MCMC algorithm
 #' 
 #' @param coarse_resp a vector of coarse-resoultion data of length \eqn{M_D}.
 #' @param coarse_covar an \eqn{M_D \times p} matrix of covariates for the downscaling variable 
