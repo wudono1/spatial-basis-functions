@@ -433,7 +433,7 @@ gpbau_new_VARCHANGE <- function(coarse_resp,
   Md <- nrow(aggmat)
   
   #----------------------------------------------------
-  # >>> NEW: Check basis-function inputs <<<
+  # Checking basis-function inputs
   #
   # Under the delta(S) = 0 assumption, K_B = Phi_B K_psi Phi_B' has
   # rank at most min(Md, r). It must have rank Md to be invertible, so
@@ -448,12 +448,6 @@ gpbau_new_VARCHANGE <- function(coarse_resp,
     stop("error: mod_param$Phi (Nd x r basis functions) must be specified.")
   if (is.null(centroid_distmat))
     stop("error: mod_param$centroid_distmat (r x r) must be specified.")
-  
-  # (b) REMOVED: mod_param$bau_distmat is no longer read by fitGPBAU_new()
-  #     or by predGPBAU2_new()/predGPBAU3_new(). Callers running only the
-  #     basis-function method can drop it from mod_param entirely, which
-  #     saves shipping an Nd x Nd matrix (~72 MB at Nd = 3000) to every
-  #     parallel worker.
   
   Phi <- as.matrix(Phi)
   centroid_distmat <- as.matrix(centroid_distmat)
@@ -487,17 +481,17 @@ gpbau_new_VARCHANGE <- function(coarse_resp,
   #----------------------------------------------------
   prior2 <- vector("list")
   
-  prior2$u_phi <- prior$phi_unif[1]
-  prior2$v_phi <- prior$phi_unif[2]
+  prior2$u_psi <- prior$psi_unif[1]
+  prior2$v_psi <- prior$psi_unif[2]
   prior2$u_sigmasq <- prior$sigmasq_invgamma[1]
   prior2$v_sigmasq <- prior$sigmasq_invgamma[2]
   
   #----------------------------------------------------
   # Check tuning parameters
   #----------------------------------------------------
-  se_phi <- tuning$se_phi
-  if (is.null(se_phi)) stop("error: MH tuning parameter for phi must be specified.")
-  if (se_phi <= 0) stop("error: MH tuning parameter for phi must be positive.")
+  se_psi <- tuning$se_psi
+  if (is.null(se_psi)) stop("error: MH tuning parameter for phi must be specified.")
+  if (se_psi <= 0) stop("error: MH tuning parameter for phi must be positive.")
   
   #----------------------------------------------------
   # Check starting values
@@ -505,14 +499,14 @@ gpbau_new_VARCHANGE <- function(coarse_resp,
   if (is.null(starting)) {
     
     starting <- list(
-      phi = mean(prior$phi_unif),
+      phi = mean(prior$psi_unif),
       sigmasq = var(xxb),
       regcoef = matrix(c(mean(xxb)))
     )
   }
   
   #----------------------------------------------------
-  # >>> NEW: keep the starting range strictly inside the prior <<<
+  # keep the starting range strictly inside the prior
   #
   # logit(psi, u, v) = log((psi - u)/(v - psi)) is -Inf/+Inf at the bounds, so
   # cur_logpost becomes -Inf, every MH ratio evaluates to NaN, and the chain
@@ -521,8 +515,8 @@ gpbau_new_VARCHANGE <- function(coarse_resp,
   # "intervals" rather than an error. findinit_new() can return a boundary
   # value whenever the profile likelihood is maximised at an endpoint.
   #----------------------------------------------------
-  psi_lo <- prior2$u_phi
-  psi_hi <- prior2$v_phi
+  psi_lo <- prior2$u_psi
+  psi_hi <- prior2$v_psi
   inset  <- 0.01 * (psi_hi - psi_lo)          # 1% of the prior range
   if (starting$phi <= psi_lo + inset || starting$phi >= psi_hi - inset) {
     warning(paste0("starting psi (", signif(starting$phi, 4),
@@ -532,7 +526,7 @@ gpbau_new_VARCHANGE <- function(coarse_resp,
   }
   
   #----------------------------------------------------
-  # >>> NEW: conditioning check at the starting psi <<<
+  # Conditioning check at the starting psi
   #
   # K_B can be full rank yet numerically unusable. Gaussian RBFs are
   # notoriously collinear, and block-averaging makes it worse. This is a

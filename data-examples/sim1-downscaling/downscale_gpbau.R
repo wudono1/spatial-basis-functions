@@ -44,7 +44,7 @@ aggmat <- agg(fine_grid, coar_grid)
 prior <- list(
   
   # bounds u, v, uniform prior on param ψ (Supp S4)
-  phi_unif = c(0.1/3, 1),
+  psi_unif = c(0.1/3, 1),
   
   # params c(u, v) of inverse gamma on param σ^2 (Supp S4)
   sigmasq_invgamma = c(3, 2)
@@ -52,7 +52,7 @@ prior <- list(
 
 # SD of Gaussian random walk (step 1 of MCMC algo in Supp S4/5)
 # distr. glogit(ψ′) ~ N( glogit(ψ⁽ᵗ⁻¹⁾), τ² )
-tuning <- list(se_phi = 2.5)
+tuning <- list(se_psi = 2.5)
 
 
 # list of fixed inputs (aggregation matrix, distance matrix, etc)
@@ -97,8 +97,8 @@ set.seed(42)
 
 # Grid search to find initial values of range, variance for MCMC model fitting 
 # Evaluating log likelihood over a grid of range and variance values
-eps <- 1e-2 * diff(prior$phi_unif)
-psi_vals <- seq(prior$phi_unif[1] + eps, prior$phi_unif[2] - eps, length = 50) 
+eps <- 1e-2 * diff(prior$psi_unif)
+psi_vals <- seq(prior$psi_unif[1] + eps, prior$psi_unif[2] - eps, length = 50) 
 n_sigma_vals <- 5
 
 # for each dataset ({len(range_vals) x len(sill_vals)} unique datasets), 
@@ -143,7 +143,7 @@ gpb_runtime <- system.time(
       # takes the same prior/tuning/starting keys, and reads the extra basis
       # inputs out of mod_param. To fit the OLD model instead, swap this one
       # name back to gpbau() (mod_param is a superset, so it still works).
-      gpbau_new(coarse_resp = coar_xx[,i,j],
+      spds:::gpbau_new_VARCHANGE(coarse_resp = coar_xx[,i,j],
                 coarse_covar = coar_covar,
                 prior = prior,
                 starting = list(phi = psi_init[i, j],

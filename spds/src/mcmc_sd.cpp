@@ -462,7 +462,7 @@ List fitGPBAU_new_VARCHANGE(const arma::colvec& xB,       // coarse-resolution r
   // stays inside (u_psi, v_psi) automatically)
   
   // ---- Tuning ----------------------------------------------------------------
-  double se_psi = tuning["se_phi"];         // std dev of the Gaussian random-walk proposal for logit_psi
+  double se_psi = tuning["se_psi"];         // std dev of the Gaussian random-walk proposal for logit_psi
   
   // ---- Dimensions ------------------------------------------------------------
   int nn = xB.n_rows;                       // M_D: number of coarse-resolution observations
