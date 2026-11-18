@@ -45,6 +45,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fitGPBAU_new_VARCHANGE
+List fitGPBAU_new_VARCHANGE(const arma::colvec& xB, const arma::mat& RB, const List& prior, const List& starting, const List& tuning, const List& mod_param, const List& mcmc_settings);
+RcppExport SEXP _spds_fitGPBAU_new_VARCHANGE(SEXP xBSEXP, SEXP RBSEXP, SEXP priorSEXP, SEXP startingSEXP, SEXP tuningSEXP, SEXP mod_paramSEXP, SEXP mcmc_settingsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type xB(xBSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type RB(RBSEXP);
+    Rcpp::traits::input_parameter< const List& >::type prior(priorSEXP);
+    Rcpp::traits::input_parameter< const List& >::type starting(startingSEXP);
+    Rcpp::traits::input_parameter< const List& >::type tuning(tuningSEXP);
+    Rcpp::traits::input_parameter< const List& >::type mod_param(mod_paramSEXP);
+    Rcpp::traits::input_parameter< const List& >::type mcmc_settings(mcmc_settingsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fitGPBAU_new_VARCHANGE(xB, RB, prior, starting, tuning, mod_param, mcmc_settings));
+    return rcpp_result_gen;
+END_RCPP
+}
 // predGPBAU2
 arma::mat predGPBAU2(const arma::colvec& y, const arma::mat& X, const List& post_sams, const List& mod_param, const int& nreport);
 RcppExport SEXP _spds_predGPBAU2(SEXP ySEXP, SEXP XSEXP, SEXP post_samsSEXP, SEXP mod_paramSEXP, SEXP nreportSEXP) {
@@ -106,14 +123,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // expCorr
-arma::mat expCorr(const arma::mat& distmat, const double& phi);
-RcppExport SEXP _spds_expCorr(SEXP distmatSEXP, SEXP phiSEXP) {
+arma::mat expCorr(const arma::mat& distmat, const double& psi);
+RcppExport SEXP _spds_expCorr(SEXP distmatSEXP, SEXP psiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::mat& >::type distmat(distmatSEXP);
-    Rcpp::traits::input_parameter< const double& >::type phi(phiSEXP);
-    rcpp_result_gen = Rcpp::wrap(expCorr(distmat, phi));
+    Rcpp::traits::input_parameter< const double& >::type psi(psiSEXP);
+    rcpp_result_gen = Rcpp::wrap(expCorr(distmat, psi));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -121,6 +138,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_spds_fitGPBAU", (DL_FUNC) &_spds_fitGPBAU, 7},
     {"_spds_fitGPBAU_new", (DL_FUNC) &_spds_fitGPBAU_new, 7},
+    {"_spds_fitGPBAU_new_VARCHANGE", (DL_FUNC) &_spds_fitGPBAU_new_VARCHANGE, 7},
     {"_spds_predGPBAU2", (DL_FUNC) &_spds_predGPBAU2, 5},
     {"_spds_predGPBAU3", (DL_FUNC) &_spds_predGPBAU3, 5},
     {"_spds_predGPBAU2_new", (DL_FUNC) &_spds_predGPBAU2_new, 5},

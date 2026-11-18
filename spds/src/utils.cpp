@@ -8,7 +8,7 @@ using namespace std;
 
 // [[Rcpp::export]]
 arma::mat expCorr(const arma::mat& distmat,
-                  const double& phi) {
+                  const double& psi) {
 
   int nrow = distmat.n_rows;
   int ncol = distmat.n_cols;
@@ -18,7 +18,7 @@ arma::mat expCorr(const arma::mat& distmat,
   for (int i = 0; i < nrow; ++i) {
     for (int j = 0; j < ncol; ++j) {
       dd = distmat(i,j);
-      covmat(i,j) = exp(-dd / phi);
+      covmat(i,j) = exp(-dd / psi);
     }
   }
 

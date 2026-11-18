@@ -9,6 +9,10 @@ fitGPBAU_new <- function(xB, RB, prior, starting, tuning, mod_param, mcmc_settin
     .Call(`_spds_fitGPBAU_new`, xB, RB, prior, starting, tuning, mod_param, mcmc_settings)
 }
 
+fitGPBAU_new_VARCHANGE <- function(xB, RB, prior, starting, tuning, mod_param, mcmc_settings) {
+    .Call(`_spds_fitGPBAU_new_VARCHANGE`, xB, RB, prior, starting, tuning, mod_param, mcmc_settings)
+}
+
 predGPBAU2 <- function(y, X, post_sams, mod_param, nreport) {
     .Call(`_spds_predGPBAU2`, y, X, post_sams, mod_param, nreport)
 }
@@ -25,7 +29,7 @@ predGPBAU3_new <- function(xB, Rtilde, post_sams, mod_param, nreport) {
     .Call(`_spds_predGPBAU3_new`, xB, Rtilde, post_sams, mod_param, nreport)
 }
 
-expCorr <- function(distmat, phi) {
-    .Call(`_spds_expCorr`, distmat, phi)
+expCorr <- function(distmat, psi) {
+    .Call(`_spds_expCorr`, distmat, psi)
 }
 

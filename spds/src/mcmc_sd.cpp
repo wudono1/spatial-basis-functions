@@ -214,40 +214,40 @@ List fitGPBAU(const arma::colvec& y,        // coarse-resolution response, lengt
 // GPBAU using new basis functions method
 // [[Rcpp::export]]
 List fitGPBAU_new(const arma::colvec& xB,       // coarse-resolution response X_B (paper: X_B), length M_D (= nn)
-              const arma::mat& RB,          // coarse covariate/design matrix R_B (paper: R_B), M_D x (p+1)
-              const List& prior,            // hyperparameters of the priors (see below)
-              const List& starting,         // starting values for psi, sigmasq, gam
-              const List& tuning,           // Metropolis proposal spread (se_psi)
-              const List& mod_param,         // fixed model inputs: bau_distmat, aggmat
-              const List& mcmc_settings) {  // niter, nreport
-
-  // ---- Prior hyperparameters -------------------------------------------------
-  // (list KEYS stay "u_phi"/"v_phi" so the R wrapper is unchanged; locals renamed to psi.)
+                  const arma::mat& RB,          // coarse covariate/design matrix R_B (paper: R_B), M_D x (p+1)
+                  const List& prior,            // hyperparameters of the priors (see below)
+                  const List& starting,         // starting values for psi, sigmasq, gam
+                  const List& tuning,           // Metropolis proposal spread (se_psi)
+                  const List& mod_param,         // fixed model inputs: bau_distmat, aggmat
+                  const List& mcmc_settings) {  // niter, nreport
+  
+  // ---- Prior hyperparams ----------------------------------------------------
+  // (see eqn. 11 of mech informed downscaling or S4 of Supporting Info for spatial-statistical downscaling)
+  // Note: list keys stay "u_phi"/"v_phi" so the R wrapper is unchanged; local variables renamed to psi
   double u_psi = prior["u_phi"];            // lower bound of Uniform prior on range psi
   double v_psi = prior["v_phi"];            // upper bound of Uniform prior on range psi
   double u_sigmasq = prior["u_sigmasq"];    // shape of InvGamma prior on variance sigmasq
   double v_sigmasq = prior["v_sigmasq"];    // scale of InvGamma prior on variance sigmasq
-
+  
   // ---- Fixed model inputs & MCMC controls ------------------------------------
-  // arma::mat bau_distmat = mod_param["bau_distmat"]; // N_D x N_D pairwise distances between fine BAUs
   arma::mat aggmat = mod_param["aggmat"];           // W_B: M_D x N_D averaging matrix (fine -> coarse)
   int niter = mcmc_settings["niter"];               // total number of MCMC iterations to run
   int nreport = mcmc_settings["nreport"];           // print a progress report every nreport iters
-
+  
   // ---- Starting values (current state of the chain) --------------------------
   arma::colvec gam = starting["regcoef"];   // gam = gamma-tilde: (intercept gamma0, covariate coefs gamma), length p+1
   double sigmasq = starting["sigmasq"];     // sigmasq: variance parameter sigma^2
   double psi = starting["phi"];             // psi: range parameter of exp correlation (paper's psi)
   double logit_psi = logit(psi, u_psi, v_psi); // psi mapped to the whole real line (so the RW proposal
   // stays inside (u_psi, v_psi) automatically)
-
+  
   // ---- Tuning ----------------------------------------------------------------
   double se_psi = tuning["se_phi"];         // std dev of the Gaussian random-walk proposal for logit_psi
-
+  
   // ---- Dimensions ------------------------------------------------------------
   int nn = xB.n_rows;                       // M_D: number of coarse-resolution observations
   int pp = RB.n_cols;                       // p+1: number of columns of R_B (covariates incl. intercept)
-
+  
   // ---- Scratch scalars -------------------------------------------------------
   // "cur_" = quantities at the CURRENT accepted psi; "cand_" = at the PROPOSED (candidate) psi.
   double KB_log_det, cur_loglik, cur_logpost, quad_log_det;
@@ -257,7 +257,7 @@ List fitGPBAU_new(const arma::colvec& xB,       // coarse-resolution response X_
   //   quad_log_det  = log|R_B' K_B^{-1} R_B|(log-det of the "information" matrix for gam)
   //   S2            = e' K_B^{-1} e         (generalised residual sum of squares, paper's S^2(psi))
   //   cur_loglik/cur_logpost = collapsed log-likelihood / log-posterior at current psi
-
+  
   // ---- Scratch vectors/matrices ----------------------------------------------
   arma::colvec gam_hat, proj_xB, ee, cand_gam_hat, cand_proj_xB, cand_ee;
   //   gam_hat = GLS estimate of gam:  (R_B' K_B^{-1} R_B)^{-1} R_B' K_B^{-1} xB
@@ -276,19 +276,20 @@ List fitGPBAU_new(const arma::colvec& xB,       // coarse-resolution response X_
   // NEW CHANGES START HERE
   
   // IMPORTANT: specify new input variable for phi (basis function models)
-  arma::mat Phi = mod_param["Phi"];                             // φ(S)ᵀ : N_D x r, basis fns at BAU centroids
-  arma::mat centroid_distmat = mod_param["centroid_distmat"];   // r x r pairwise distance matrix among centroids
+  arma::mat Phi = mod_param["Phi"];                            // φ(S)ᵀ : N_D x r, basis fns at BAU centroids
+  arma::mat centroid_distmat = mod_param["centroid_distmat"];  // r x r pairwise distance matrix among centroids
   arma::mat PsiB = aggmat * Phi;                               // Ψ_B = W_B φ(S)ᵀ : M_D x r.
-                                                                // Used to simplify calculation of some posterior hyperparameters
+  // Used to simplify calculation of some posterior hyperparameters
   
-
+  
   // ---- Evaluate the collapsed likelihood at the STARTING psi -----------------
-  Kpsi = expCorr(centroid_distmat, psi);                        // K_psi over centroids
+  Kpsi = expCorr(centroid_distmat, psi);                        // K_Ψ over centroids
+  // K_Ψ = exp(-‖s_i - s_i'‖/Ψ) (expo cov f'n)
   KB = PsiB * Kpsi * PsiB.t();                         // K_B = PsiB K_psi PsiB' over blocks
   KB_log_det = arma::log_det_sympd(KB);                    // log|K_B|  (sympd = symmetric pos-def)
   quad_corrmat = RB.t() * arma::solve(KB, RB, arma::solve_opts::likely_sympd); // R_B' K_B^{-1} R_B
   quad_log_det = arma::log_det_sympd(quad_corrmat);        // log|R_B' K_B^{-1} R_B|
-
+  
   // fitting regression with generalized least squares
   // code assumes flat prior on V, eg. V_mu^-1 = 0, so implementation is slightly different from og derivation
   // to fully stick to derivation, must change quad_corrmat
@@ -301,7 +302,7 @@ List fitGPBAU_new(const arma::colvec& xB,       // coarse-resolution response X_
   ee = xB - RB * gam_hat;                                  // residuals
   S2 = as_scalar(ee.t() * arma::solve(KB, ee, arma::solve_opts::likely_sympd)); // e' K_B^{-1} e
   
-
+  
   // Collapsed log-likelihood of psi (gam & sigmasq integrated out):
   //   -1/2 log|K_B| - 1/2 log|R_B'K_B^{-1}R_B| - (u_sigmasq + (n-p)/2) * log(v_sigmasq + S2/2)
   cur_loglik = -.5 * KB_log_det - .5* quad_log_det;
@@ -310,7 +311,7 @@ List fitGPBAU_new(const arma::colvec& xB,       // coarse-resolution response X_
   // logit transform, log((psi-u_psi)(v_psi-psi)), which turns the Uniform(u_psi,v_psi) prior
   // into the correct target density for the unconstrained random walk.
   cur_logpost = cur_loglik + log(psi - u_psi) + log(v_psi - psi);
-
+  
   // Fail loudly rather than freezing. A non-finite starting log-posterior
   // (e.g. psi exactly on a prior bound -> log(0) = -Inf) makes every
   // acceptance ratio NaN, so the chain never moves and sigmasq/gam stay
@@ -319,32 +320,32 @@ List fitGPBAU_new(const arma::colvec& xB,       // coarse-resolution response X_
   if (!std::isfinite(cur_logpost)) {
     Rcpp::stop("fitGPBAU_new: initial log-posterior is not finite (psi may be on a prior bound).");
   }
-
-
+  
+  
   // NEW CHANGES END HERE 7/22/26 9PM
-
-
+  
+  
   // ---- Storage for the posterior draws ---------------------------------------
   arma::colvec psi_save(niter), sigmasq_save(niter), mh_data(niter); // mh_data = 1 if accepted, else 0
   arma::mat gam_save(pp, niter);                                     // one column of gam per iteration
-
+  
   // ---- Bookkeeping / timing counters -----------------------------------------
   int icount = 0;          // iterations since last progress report
   int batch_accept = 0;    // acceptances since last report (for interval acceptance rate)
   int accept = 0;          // total acceptances so far (for overall acceptance rate)
   double block_time = 0.0; // wall-clock time accumulated since last report
   double time_diff, ert;   // per-iter elapsed time; ert = estimated remaining time
-
+  
   // ===================== MCMC loop ===========================================
   for (int iter = 0; iter < niter; ++iter) {
-
+    
     auto start = std::chrono::steady_clock::now();  // start timer for this iteration
-
+    
     // ---- (1) Metropolis-Hastings update of psi -------------------------------
     // Propose a new psi by a Gaussian random walk on the logit scale, then map back.
     cand_logit_psi= R::rnorm(logit_psi, se_psi);           // proposal on unconstrained scale
     cand_psi = logitInv(cand_logit_psi, u_psi, v_psi);     // back to (u_psi, v_psi)
-
+    
     // Recompute the collapsed likelihood at the candidate psi (same steps as above).
     cand_Kpsi = expCorr(centroid_distmat, cand_psi);
     cand_KB = PsiB * cand_Kpsi * PsiB.t();
@@ -352,22 +353,22 @@ List fitGPBAU_new(const arma::colvec& xB,       // coarse-resolution response X_
     cand_quad_corrmat = RB.t() * arma::solve(cand_KB, RB, arma::solve_opts::likely_sympd);
     cand_quad_log_det = arma::log_det_sympd(cand_quad_corrmat);
     
-
+    
     cand_proj_xB = RB.t() * arma::solve(cand_KB, xB, arma::solve_opts::likely_sympd);
     cand_gam_hat = arma::solve(cand_quad_corrmat, cand_proj_xB);
     cand_ee = xB - RB * cand_gam_hat;
     // NOTE: changed 'ee' to 'cand_ee'
     // cand_S2 = as_scalar(ee.t() * arma::solve(cand_KB, ee, arma::solve_opts::likely_sympd));
     cand_S2 = as_scalar(cand_ee.t() * arma::solve(cand_KB, cand_ee, arma::solve_opts::likely_sympd));
-
+    
     cand_loglik = -.5 * cand_KB_log_det - .5* cand_quad_log_det;
     cand_loglik += -(.5 * (nn - pp) + u_sigmasq) * log(.5 * cand_S2 + v_sigmasq);
     cand_logpost = cand_loglik + log(cand_psi - u_psi) + log(v_psi - cand_psi);
-
+    
     // Accept with probability min(1, exp(cand_logpost - cur_logpost)).
     // Comparing log(U) <= (cand - cur) is the standard log-scale acceptance test.
     if (log(arma::randu()) <= (cand_logpost - cur_logpost)) {
-
+      
       // Accepted: promote all candidate quantities to be the new current state.
       psi = cand_psi;
       logit_psi = cand_logit_psi;
@@ -378,29 +379,29 @@ List fitGPBAU_new(const arma::colvec& xB,       // coarse-resolution response X_
       batch_accept++;
       accept++;
       mh_data(iter) = 1;                                   // record acceptance
-
+      
       // ---- (2) Gibbs update of sigmasq (only when psi moved) -----------------
       // Full conditional: sigmasq ~ InvGamma(u_sigmasq + (n-p)/2, v_sigmasq + S2/2).
       // Drawn as 1 / Gamma(shape, rate); R::rgamma takes (shape, SCALE)=1/rate.
       sigmasq = 1.0 / R::rgamma(u_sigmasq + .5 * (nn - pp), 1.0 / (v_sigmasq + .5 *S2));
-
+      
       // ---- (3) Gibbs update of gam (only when psi moved) ---------------------
       // Full conditional: gam ~ N( gam_hat, sigmasq * (R_B' K_B^{-1} R_B)^{-1} ).
       gam_corr = arma::inv_sympd(cand_quad_corrmat);       // (R_B' K_B^{-1} R_B)^{-1}
       gam = arma::mvnrnd(cand_gam_hat, sigmasq* gam_corr); // one multivariate-normal draw
-
+      
     }
     // If rejected: psi, sigmasq, gam all keep their previous values (carried forward below).
-
+    
     auto end = std::chrono::steady_clock::now();
     time_diff = std::chrono::duration<double>(end - start).count(); // seconds for this iter
     block_time += time_diff;
-
+    
     // ---- Store this iteration's draws ----------------------------------------
     psi_save(iter) = psi;
     sigmasq_save(iter) = sigmasq;
     gam_save.col(iter) = gam;
-
+    
     // ---- Periodic progress report --------------------------------------------
     icount++;
     if (icount == nreport) {
@@ -413,19 +414,240 @@ List fitGPBAU_new(const arma::colvec& xB,       // coarse-resolution response X_
       batch_accept = 0;
       block_time = 0.0;
     }
-
+    
   }
   // =================== end MCMC loop =========================================
-
+  
   // Bundle the posterior draws. Output KEYS stay "phi","sigmasq","beta" so the R wrapper and
   // predGPBAU2/3 keep working unchanged (only the C++ variable names changed to psi_save/gam_save).
   List post_sams = List::create(Named("phi") = psi_save,
                                 Named("sigmasq") = sigmasq_save,
                                 Named("beta") = gam_save);
-
+  
   return List::create(Named("post_sams") = post_sams,   // the chains
                       Named("mh_data") = mh_data);        // per-iter accept/reject flags
 }
+
+
+
+
+
+// temp function for changing variable names
+// [[Rcpp::export]]
+List fitGPBAU_new_VARCHANGE(const arma::colvec& xB,       // coarse-resolution response X_B (paper: X_B), length M_D (= nn)
+                  const arma::mat& RB,          // coarse covariate/design matrix R_B (paper: R_B), M_D x (p+1)
+                  const List& prior,            // hyperparameters of the priors (see below)
+                  const List& starting,         // starting values for psi, sigmasq, gam
+                  const List& tuning,           // Metropolis proposal spread (se_psi)
+                  const List& mod_param,         // fixed model inputs: bau_distmat, aggmat
+                  const List& mcmc_settings) {  // niter, nreport
+  
+  // ---- Prior hyperparams ----------------------------------------------------
+  // (see eqn. 11 of mech informed downscaling or S4 of Supporting Info for spatial-statistical downscaling)
+  double u_psi = prior["u_psi"];            // lower bound of Uniform prior on range psi
+  double v_psi = prior["v_psi"];            // upper bound of Uniform prior on range psi
+  double u_sigmasq = prior["u_sigmasq"];    // shape of InvGamma prior on variance sigmasq
+  double v_sigmasq = prior["v_sigmasq"];    // scale of InvGamma prior on variance sigmasq
+  
+  // ---- Fixed model inputs & MCMC controls ------------------------------------
+  arma::mat aggmat = mod_param["aggmat"];           // W_B: M_D x N_D averaging matrix (fine -> coarse)
+  int niter = mcmc_settings["niter"];               // total number of MCMC iterations to run
+  int nreport = mcmc_settings["nreport"];           // print a progress report every nreport iters
+  
+  // ---- Starting values (current state of the chain) --------------------------
+  arma::colvec gam = starting["regcoef"];   // gam = gamma-tilde: (intercept gamma0, covariate coefs gamma), length p+1
+  double sigmasq = starting["sigmasq"];     // sigmasq: variance parameter sigma^2
+  double psi = starting["phi"];             // psi: range parameter of exp correlation (paper's psi)
+  double logit_psi = logit(psi, u_psi, v_psi); // psi mapped to the whole real line (so the RW proposal
+  // stays inside (u_psi, v_psi) automatically)
+  
+  // ---- Tuning ----------------------------------------------------------------
+  double se_psi = tuning["se_phi"];         // std dev of the Gaussian random-walk proposal for logit_psi
+  
+  // ---- Dimensions ------------------------------------------------------------
+  int nn = xB.n_rows;                       // M_D: number of coarse-resolution observations
+  int pp = RB.n_cols;                       // p+1: number of columns of R_B (covariates incl. intercept)
+  
+  // ---- Scratch scalars -------------------------------------------------------
+  // "cur_" = quantities at the CURRENT accepted psi; "cand_" = at the PROPOSED (candidate) psi.
+  double KB_log_det, cur_loglik, cur_logpost, quad_log_det;
+  double cand_logit_psi, cand_psi, cand_KB_log_det, cand_quad_log_det, cand_loglik, cand_logpost;
+  double cand_S2, S2;
+  //   KB_log_det    = log|K_B|              (log-determinant of the coarse correlation)
+  //   quad_log_det  = log|R_B' K_B^{-1} R_B|(log-det of the "information" matrix for gam)
+  //   S2            = e' K_B^{-1} e         (generalised residual sum of squares, paper's S^2(psi))
+  //   cur_loglik/cur_logpost = collapsed log-likelihood / log-posterior at current psi
+  
+  // ---- Scratch vectors/matrices ----------------------------------------------
+  arma::colvec gam_hat, proj_xB, ee, cand_gam_hat, cand_proj_xB, cand_ee;
+  //   gam_hat = GLS estimate of gam:  (R_B' K_B^{-1} R_B)^{-1} R_B' K_B^{-1} xB
+  //   proj_xB = R_B' K_B^{-1} xB      (the "projected" response)
+  //   ee      = xB - RB*gam_hat       (GLS residuals)
+  arma::mat Kpsi, KB, dat_corrmat_inv, quad_corrmat;
+  arma::mat cand_Kpsi, cand_KB, cand_dat_corrmat_inv, cand_quad_corrmat;
+  arma::mat gam_corr;
+  //   Kpsi   = K_psi = expCorr(...)     : correlation from exp(-d/psi), no sigmasq
+  //   KB     = K_B = W_B K_psi W_B'     : M_D x M_D correlation over coarse blocks
+  //   quad_corrmat = R_B' K_B^{-1} R_B  : (p+1)x(p+1), the GLS information matrix for gam
+  //   gam_corr = (R_B' K_B^{-1} R_B)^{-1}: posterior covariance of gam (up to sigmasq)
+  //   (dat_corrmat_inv is declared but unused.)
+  
+  
+  // NEW CHANGES START HERE
+  
+  // IMPORTANT: specify new basis matrix for phi (basis function models)
+  arma::mat Phi = mod_param["Phi"];                            // φ(S)ᵀ : N_D x r, basis fns at BAU centroids
+  arma::mat centroid_distmat = mod_param["centroid_distmat"];  // r x r pairwise distance matrix among centroids
+  arma::mat PhiB = aggmat * Phi;                               // Ψ_B = W_B φ(S)ᵀ : M_D x r.
+  // Used to simplify calculation of some posterior hyperparameters
+  
+  
+  // ---- Evaluate the collapsed likelihood at the STARTING psi -----------------
+  Kpsi = expCorr(centroid_distmat, psi);                        // K_Ψ over centroids
+  // K_Ψ = exp(-‖c_i - c_i'‖/Ψ) (expo cov f'n)
+  KB = PhiB * Kpsi * PhiB.t();                         // K_B = PhiB K_psi PhiB' over blocks
+  KB_log_det = arma::log_det_sympd(KB);                    // log|K_B|  (sympd = symmetric pos-def)
+  quad_corrmat = RB.t() * arma::solve(KB, RB, arma::solve_opts::likely_sympd); // R_B' K_B^{-1} R_B
+  quad_log_det = arma::log_det_sympd(quad_corrmat);        // log|R_B' K_B^{-1} R_B|
+  
+  // fitting regression with generalized least squares
+  // code assumes flat prior on V, eg. V_mu^-1 = 0, so implementation is slightly different from og derivation
+  // to fully stick to derivation, must change quad_corrmat
+  
+  // building mu_hat_gamma_hat (aka gam_hat)
+  proj_xB = RB.t() * arma::solve(KB, xB, arma::solve_opts::likely_sympd);       // R_B' K_B^{-1} xB
+  gam_hat = arma::solve(quad_corrmat, proj_xB);            // GLS estimate gam_hat
+  
+  // building S2
+  ee = xB - RB * gam_hat;                                  // residuals
+  S2 = as_scalar(ee.t() * arma::solve(KB, ee, arma::solve_opts::likely_sympd)); // e' K_B^{-1} e
+  
+  
+  // Collapsed log-likelihood of psi (gam & sigmasq integrated out):
+  //   -1/2 log|K_B| - 1/2 log|R_B'K_B^{-1}R_B| - (u_sigmasq + (n-p)/2) * log(v_sigmasq + S2/2)
+  cur_loglik = -.5 * KB_log_det - .5* quad_log_det;
+  cur_loglik += -(.5 * (nn - pp) + u_sigmasq) * log(.5 * S2 + v_sigmasq);
+  // Add the log-prior for psi ON THE LOGIT SCALE. The two log terms are the Jacobian of the
+  // logit transform, log((psi-u_psi)(v_psi-psi)), which turns the Uniform(u_psi,v_psi) prior
+  // into the correct target density for the unconstrained random walk.
+  cur_logpost = cur_loglik + log(psi - u_psi) + log(v_psi - psi);
+  
+  // Fail loudly rather than freezing. A non-finite starting log-posterior
+  // (e.g. psi exactly on a prior bound -> log(0) = -Inf) makes every
+  // acceptance ratio NaN, so the chain never moves and sigmasq/gam stay
+  // pinned at their starting values for all niter iterations -- which looks
+  // like a converged chain with a zero-width credible interval.
+  if (!std::isfinite(cur_logpost)) {
+    Rcpp::stop("fitGPBAU_new: initial log-posterior is not finite (psi may be on a prior bound).");
+  }
+  
+  
+  // NEW CHANGES END HERE 7/22/26 9PM
+  
+  
+  // ---- Storage for the posterior draws ---------------------------------------
+  arma::colvec psi_save(niter), sigmasq_save(niter), mh_data(niter); // mh_data = 1 if accepted, else 0
+  arma::mat gam_save(pp, niter);                                     // one column of gam per iteration
+  
+  // ---- Bookkeeping / timing counters -----------------------------------------
+  int icount = 0;          // iterations since last progress report
+  int batch_accept = 0;    // acceptances since last report (for interval acceptance rate)
+  int accept = 0;          // total acceptances so far (for overall acceptance rate)
+  double block_time = 0.0; // wall-clock time accumulated since last report
+  double time_diff, ert;   // per-iter elapsed time; ert = estimated remaining time
+  
+  // ===================== MCMC loop ===========================================
+  for (int iter = 0; iter < niter; ++iter) {
+    
+    auto start = std::chrono::steady_clock::now();  // start timer for this iteration
+    
+    // ---- (1) Metropolis-Hastings update of psi -------------------------------
+    // Propose a new psi by a Gaussian random walk on the logit scale, then map back.
+    cand_logit_psi= R::rnorm(logit_psi, se_psi);           // proposal on unconstrained scale
+    cand_psi = logitInv(cand_logit_psi, u_psi, v_psi);     // back to (u_psi, v_psi)
+    
+    // Recompute the collapsed likelihood at the candidate psi (same steps as above).
+    cand_Kpsi = expCorr(centroid_distmat, cand_psi);
+    cand_KB = PhiB * cand_Kpsi * PhiB.t();
+    cand_KB_log_det = arma::log_det_sympd(cand_KB);
+    cand_quad_corrmat = RB.t() * arma::solve(cand_KB, RB, arma::solve_opts::likely_sympd);
+    cand_quad_log_det = arma::log_det_sympd(cand_quad_corrmat);
+    
+    
+    cand_proj_xB = RB.t() * arma::solve(cand_KB, xB, arma::solve_opts::likely_sympd);
+    cand_gam_hat = arma::solve(cand_quad_corrmat, cand_proj_xB);
+    cand_ee = xB - RB * cand_gam_hat;
+    // NOTE: changed 'ee' to 'cand_ee'
+    // cand_S2 = as_scalar(ee.t() * arma::solve(cand_KB, ee, arma::solve_opts::likely_sympd));
+    cand_S2 = as_scalar(cand_ee.t() * arma::solve(cand_KB, cand_ee, arma::solve_opts::likely_sympd));
+    
+    cand_loglik = -.5 * cand_KB_log_det - .5* cand_quad_log_det;
+    cand_loglik += -(.5 * (nn - pp) + u_sigmasq) * log(.5 * cand_S2 + v_sigmasq);
+    cand_logpost = cand_loglik + log(cand_psi - u_psi) + log(v_psi - cand_psi);
+    
+    // Accept with probability min(1, exp(cand_logpost - cur_logpost)).
+    // Comparing log(U) <= (cand - cur) is the standard log-scale acceptance test.
+    if (log(arma::randu()) <= (cand_logpost - cur_logpost)) {
+      
+      // Accepted: promote all candidate quantities to be the new current state.
+      psi = cand_psi;
+      logit_psi = cand_logit_psi;
+      KB_log_det = cand_KB_log_det;
+      quad_log_det = cand_quad_log_det;
+      cur_logpost = cand_logpost;
+      S2 = cand_S2;
+      batch_accept++;
+      accept++;
+      mh_data(iter) = 1;                                   // record acceptance
+      
+      // ---- (2) Gibbs update of sigmasq (only when psi moved) -----------------
+      // Full conditional: sigmasq ~ InvGamma(u_sigmasq + (n-p)/2, v_sigmasq + S2/2).
+      // Drawn as 1 / Gamma(shape, rate); R::rgamma takes (shape, SCALE)=1/rate.
+      sigmasq = 1.0 / R::rgamma(u_sigmasq + .5 * (nn - pp), 1.0 / (v_sigmasq + .5 *S2));
+      
+      // ---- (3) Gibbs update of gam (only when psi moved) ---------------------
+      // Full conditional: gam ~ N( gam_hat, sigmasq * (R_B' K_B^{-1} R_B)^{-1} ).
+      gam_corr = arma::inv_sympd(cand_quad_corrmat);       // (R_B' K_B^{-1} R_B)^{-1}
+      gam = arma::mvnrnd(cand_gam_hat, sigmasq* gam_corr); // one multivariate-normal draw
+      
+    }
+    // If rejected: psi, sigmasq, gam all keep their previous values (carried forward below).
+    
+    auto end = std::chrono::steady_clock::now();
+    time_diff = std::chrono::duration<double>(end - start).count(); // seconds for this iter
+    block_time += time_diff;
+    
+    // ---- Store this iteration's draws ----------------------------------------
+    psi_save(iter) = psi;
+    sigmasq_save(iter) = sigmasq;
+    gam_save.col(iter) = gam;
+    
+    // ---- Periodic progress report --------------------------------------------
+    icount++;
+    if (icount == nreport) {
+      Rprintf("Sampled: %i of %i\n", (iter + 1), niter);
+      ert = (block_time / nreport) * (niter - iter);       // rough estimated remaining time
+      Rprintf("Estimated remaining time: %3.2f minutes\n", ert / 60.0);
+      Rprintf("Interval acceptance rate: %3.2f%%\n", 100.0 * batch_accept / nreport);
+      Rprintf("Overall acceptance rate: %3.2f%%\n\n", 100.0 * accept / (iter + 1));
+      icount = 0;
+      batch_accept = 0;
+      block_time = 0.0;
+    }
+    
+  }
+  // =================== end MCMC loop =========================================
+  
+  // Bundle the posterior draws. Output KEYS stay "phi","sigmasq","beta" so the R wrapper and
+  // predGPBAU2/3 keep working unchanged (only the C++ variable names changed to psi_save/gam_save).
+  List post_sams = List::create(Named("phi") = psi_save,
+                                Named("sigmasq") = sigmasq_save,
+                                Named("beta") = gam_save);
+  
+  return List::create(Named("post_sams") = post_sams,   // the chains
+                      Named("mh_data") = mh_data);        // per-iter accept/reject flags
+}
+
 
 
 
@@ -635,21 +857,19 @@ arma::mat predGPBAU2_new(const arma::colvec& xB,
    arma::colvec sigmasq_save = post_sams["sigmasq"];
    arma::mat gam_save = post_sams["beta"];
 
-   // CHANGED: basis inputs replace bau_distmat
+   // basis inputs replace bau_distmat
    arma::mat Phi = mod_param["Phi"];                           // Nd x r
    arma::mat centroid_distmat = mod_param["centroid_distmat"]; // r x r
    arma::mat aggmat = mod_param["aggmat"];                     // Md x Nd
 
    // NEW: Psi_B = W_B phi(S)' does not depend on psi -> compute ONCE
-   arma::mat PsiB = aggmat * Phi;                              // Md x r
+   arma::mat PhiB = aggmat * Phi;                              // Md x r
 
    double psi, sigmasq;
    int niter = psi_save.n_rows;
    int nn = Phi.n_rows;        // CHANGED: Nd now comes from Phi, not bau_distmat
    int rr = Phi.n_cols;        // NEW: r, the basis dimension
 
-   // CHANGED: no bau_corrmat / bau_blk_corr / cond_var. Nothing of size
-   // Nd x Nd is ever allocated (the old version needed ~72 MB per draw).
    arma::mat Kpsi, KB;
    arma::colvec gam, fine_mean, coarse_mean, alpha_sim, alpha_cond, resid;
    arma::mat latent_save(nn, niter);
@@ -669,21 +889,20 @@ arma::mat predGPBAU2_new(const arma::colvec& xB,
      fine_mean = Rtilde * gam;            // R~ gamma  : Nd x 1  (unchanged)
      coarse_mean = aggmat * fine_mean;    // R_B gamma : Md x 1  (unchanged)
 
-     // CHANGED: r x r kernel over basis centroids, then the Psi_B sandwich.
      // KB is kept on the CORRELATION scale because sigmasq cancels in L.
      Kpsi = expCorr(centroid_distmat, psi);          // r x r
-     KB = PsiB * Kpsi * PsiB.t();                    // Md x Md
+     KB = PhiB * Kpsi * PhiB.t();                    // Md x Md
 
      // --- conditional simulation in alpha-space (replaces the kriging block) ---
      // 1. unconditional draw of the basis coefficients
      alpha_sim = arma::mvnrnd(arma::zeros<arma::colvec>(rr), sigmasq * Kpsi);
 
      // 2. discrepancy between this draw's implied blocks and the observed data
-     resid = (xB - coarse_mean) - PsiB * alpha_sim;   // Md x 1
+     resid = (xB - coarse_mean) - PhiB * alpha_sim;   // Md x 1
 
      // 3. project onto the constraint Psi_B alpha = X_B - R_B gamma
      alpha_cond = alpha_sim +
-       Kpsi * PsiB.t() * arma::solve(KB, resid, arma::solve_opts::likely_sympd);
+       Kpsi * PhiB.t() * arma::solve(KB, resid, arma::solve_opts::likely_sympd);
 
      // 4. lift the r-dim coefficients up to the Nd fine-resolution locations
      latent_save.col(iter) = fine_mean + Phi * alpha_cond;
@@ -738,7 +957,7 @@ arma::mat predGPBAU3_new(const arma::colvec& xB,
    arma::mat centroid_distmat = mod_param["centroid_distmat"];
    arma::mat aggmat = mod_param["aggmat"];
 
-   arma::mat PsiB = aggmat * Phi;      // NEW: Md x r, psi-independent
+   arma::mat PhiB = aggmat * Phi;      // NEW: Md x r, psi-independent
 
    double psi, sigmasq;
    int niter = psi_save.n_rows;
@@ -768,7 +987,7 @@ arma::mat predGPBAU3_new(const arma::colvec& xB,
      // CHANGED: correlation-scale quantities. sigmasq cancels in the mean
      // correction and is applied explicitly to the variance below.
      Kpsi = expCorr(centroid_distmat, psi);     // r x r
-     KB = PsiB * Kpsi * PsiB.t();               // Md x Md
+     KB = PhiB * Kpsi * PhiB.t();               // Md x Md
      KB_inv = arma::inv_sympd(KB);
 
      // NEW: hoist Phi * K_psi out of the location loop -- one Nd x r multiply
@@ -779,7 +998,7 @@ arma::mat predGPBAU3_new(const arma::colvec& xB,
 
        // CHANGED: cross-covariance row built from basis quantities rather
        // than read off a row of an explicit Nd x Nd matrix.
-       ss = PhiKpsi.row(i) * PsiB.t();                     // 1 x Md
+       ss = PhiKpsi.row(i) * PhiB.t();                     // 1 x Md
        coef = ss * KB_inv;                                 // 1 x Md
 
        cond_mean = fine_mean(i) + arma::as_scalar(coef * (xB - coarse_mean));

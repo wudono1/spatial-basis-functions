@@ -4,7 +4,7 @@
 \alias{findinit_new}
 \title{Find initial values of basis-function GPB parameters}
 \usage{
-findinit_new(xxb, mod_param, phi_vals, n_sigmasq)
+findinit_new(xxb, mod_param, psi_vals, n_sigmasq)
 }
 \arguments{
 \item{xxb}{a vector of coarse-resolution data of length \eqn{M_D}.}
@@ -12,9 +12,9 @@ findinit_new(xxb, mod_param, phi_vals, n_sigmasq)
 \item{mod_param}{a list requiring \code{aggmat}, \code{Phi} (\eqn{N_D \times r}),
 and \code{centroid_distmat} (\eqn{r \times r}).}
 
-\item{phi_vals}{a vector of gridded values of the range parameter psi.}
-
 \item{n_sigmasq}{an integer to create a grid of sigmasq.}
+
+\item{phi_vals}{a vector of gridded values of the range parameter psi.}
 }
 \value{
 A list with \code{ll_vals}, \code{sigmasq_vals}, \code{phi_init}, \code{sigmasq_init}.
@@ -22,6 +22,6 @@ A list with \code{ll_vals}, \code{sigmasq_vals}, \code{phi_init}, \code{sigmasq_
 \description{
 Basis-function version of \code{\link{findinit}}. Identical grid search,
              but the coarse covariance is built as
-             \eqn{K_B(\psi) = \Psi_B K_\psi \Psi_B^\top} with \eqn{\Psi_B = W_B \phi(S)^\top},
-             instead of \eqn{W_B \exp(-d/\phi) W_B^\top} over BAU distances.
+             \eqn{K_B(\psi) = \Phi_B K_\psi \Phi_B^\top} with \eqn{\Phi_B = W_B \phi(S)^\top},
+             instead of \eqn{W_B \exp(-d/\psi) W_B^\top} over BAU distances.
 }

@@ -87,14 +87,13 @@ findinit <- function(xxb, mod_param, phi_vals, n_sigmasq) {
   
   # Calculate GPB's log likelihood over a grid 
   
-  # computing one starting pair (ψ⁽⁰⁾, σ²⁽⁰⁾) for each 
-  # from simulate_covariate_data.R
+  # computing one starting value pair (ψ⁽⁰⁾, σ²⁽⁰⁾) for each true range, sill pair
   
   # outer loop: one pass per ψ candidate (pre-computed from phi_vals) to make
   # amount of candidate σ^2 values determined by n_sigmasq (5 in downscale_gpbau.R)
   for (k in seq_along(phi_vals)) {
     
-    ww <- data$aggmat   # aggregation matrix
+    ww <- data$aggmat   # aggregation matrix W st. X_B = W * X_S
     
     # build BAU-level correlation matrix for sigma, aggregate to block-level
     bau_covmat <- exp(-data$distmat / phi_vals[k])  # K_ψ = exp(-dist_bau / Ψ), N_D x N_D corr matrix
@@ -104,12 +103,13 @@ findinit <- function(xxb, mod_param, phi_vals, n_sigmasq) {
     ratio <- diag(coar_covmat)[1]
     
     # _lb, _ub: lower and upper bounds of σ^2 values to try
+    # sample variance: var(X_B) / [K_B(Ψ)]
     sigmasq_lb <- var(xxb) / ratio
     sigmasq_ub <- var(xxb) / ratio * 3  # upper bounds is 3x lower bound
     sigmasq_seq <- seq(sigmasq_lb, sigmasq_ub, length = n_sigmasq)
     sigmasq_vals[k, ] <- sigmasq_seq
     
-    # inner loop: one pass per σ^2_kl value to find log likelihood 
+    # inner loop: one pass per σ^2_{k, l} value to find log likelihood 
     # under (ψ⁽⁰⁾, σ²⁽⁰⁾) pair
     for (l in seq_along(sigmasq_seq)) {
       param <- c(phi_vals[k], sigmasq_seq[l], mean(xxb))
@@ -158,8 +158,8 @@ gpbauLoglik <- function(param, data) {
 #'
 #' @description Basis-function version of \code{\link{findinit}}. Identical grid search,
 #'              but the coarse covariance is built as
-#'              \eqn{K_B(\psi) = \Psi_B K_\psi \Psi_B^\top} with \eqn{\Psi_B = W_B \phi(S)^\top},
-#'              instead of \eqn{W_B \exp(-d/\phi) W_B^\top} over BAU distances.
+#'              \eqn{K_B(\psi) = \Phi_B K_\psi \Phi_B^\top} with \eqn{\Phi_B = W_B \phi(S)^\top},
+#'              instead of \eqn{W_B \exp(-d/\psi) W_B^\top} over BAU distances.
 #'
 #' @param xxb a vector of coarse-resolution data of length \eqn{M_D}.
 #' @param mod_param a list requiring \code{aggmat}, \code{Phi} (\eqn{N_D \times r}),
@@ -171,84 +171,179 @@ gpbauLoglik <- function(param, data) {
 #'
 #' @export
 #'
-findinit_new <- function(xxb, mod_param, phi_vals, n_sigmasq) {
-
-  PsiB <- mod_param$aggmat %*% mod_param$Phi
+findinit_new <- function(xxb, mod_param, psi_vals, n_sigmasq) {
   
-  # distance between centroid to every other centroid (bfs, r x r) instead of 
-  # between BAU to every other BAU (N_d x N_d). Since r << N_d, instead of
-  # recalculating N_d for every candidate (in old findinit() method), only 
-  # an r x r matrix needs to be recalculated for every candidate in 
-  # findinit_new() This is because Psi_B = W_B %*% Phi (Md x r) 
-  # does not depend on psi, so it is computed ONCE outside the grid loop
+  
+  # aggmat: aggregate matrix W_B
+  PhiB <- mod_param$aggmat %*% mod_param$Phi
+  
+  
+  
+  # centroid_distmat: distance matrix b/w BF's
   centroid_distmat <- mod_param$centroid_distmat
-
+  
   data <- list(resp = xxb, covar = as.matrix(rep(1, length(xxb))),
-               PsiB = PsiB, centroid_distmat = centroid_distmat)
-
-  ll_vals <- array(NA, dim = c(length(phi_vals), n_sigmasq))
-  sigmasq_vals <- array(NA, dim = c(length(phi_vals), n_sigmasq))
-
+               PhiB = PhiB, centroid_distmat = centroid_distmat)
+  
+  ll_vals <- array(NA, dim = c(length(psi_vals), n_sigmasq))
+  sigmasq_vals <- array(NA, dim = c(length(psi_vals), n_sigmasq))
+  
   # Calculate the basis-function GPB log likelihood over a grid
-  for (k in seq_along(phi_vals)) {
-
-    # K_B(psi) on the CORRELATION scale (sigmasq factored out), so that the
-    # ratio heuristic below is comparable to the original implementation.
+  for (k in seq_along(psi_vals)) {
     
-    # recalculated every loop
-    # compared to findinit(), which has:
-    # bau_covmat <- exp(-data$distmat / phi_vals[k]) dim N_d x N_d
-    # Kpsi has dim r x r, with r << N_d, so findinit_new() more efficient
-    Kpsi <- exp(-centroid_distmat / phi_vals[k])
-    coar_covmat <- PsiB %*% Kpsi %*% t(PsiB)
-
-    # same heuristic as findinit(): scale sigmasq so that the implied coarse
-    # variance brackets the empirical variance of the data
+    # K_Ψ = exp(-𝄁s_i-s_i'𝄁/ Ψ); s_i is centroid
+    Kpsi <- exp(-centroid_distmat / psi_vals[k])
+    
+    # K_B = ɸ_B * K_Ψ * ɸ_B^T = W_B * ɸ_S * K_Ψ * ɸ_S^T * W_B^T
+    coar_covmat <- PhiB %*% Kpsi %*% t(PhiB)
+    
+    
+    # _lb, _ub: lower and upper bounds of σ^2 values to try
+    # sample variance: var(X_B) / [K_B(Ψ)]
     ratio <- diag(coar_covmat)[1]
     sigmasq_lb <- var(xxb) / ratio
     sigmasq_ub <- var(xxb) / ratio * 3
     sigmasq_seq <- seq(sigmasq_lb, sigmasq_ub, length = n_sigmasq)
     sigmasq_vals[k, ] <- sigmasq_seq
-
+    
+    # inner loop: one pass per σ^2_{k, l} value to find log likelihood 
+    # under (ψ⁽⁰⁾, σ²⁽⁰⁾) pair
     for (l in seq_along(sigmasq_seq)) {
-      param <- c(phi_vals[k], sigmasq_seq[l], mean(xxb))
+      param <- c(psi_vals[k], sigmasq_seq[l], mean(xxb))
       ll_vals[k, l] <- gpbauLoglik_new(param, data)
     }
   }
-
-  # Find the largest log likelihood from the grid
+  
+  # find the (ψ⁽⁰⁾, σ²⁽⁰⁾) pair in ll_vals with largest log-likelihood
   idx <- as.numeric(which(ll_vals == max(ll_vals), arr.ind = TRUE))
-
-  # output
+  
+  # output entire matrix of candidate value pairs (ψ⁽⁰⁾, σ²⁽⁰⁾) as well
+  # as pair with highest log-likelihood
   list(ll_vals = ll_vals,
        sigmasq_vals = sigmasq_vals,
-       phi_init = phi_vals[idx[1]],
+       psi_init = psi_vals[idx[1]],
        sigmasq_init = sigmasq_vals[idx[1], idx[2]])
-
+  
 }
 
 # log likelihood under the basis-function GPB model
-# DIFFERENCE vs gpbauLoglik(): only the covariance construction changes.
-#   old:  K_B = W_B (sigmasq * exp(-d_BAU / phi)) W_B'
-#   new:  K_B = Psi_B (sigmasq * exp(-d_centroid / psi)) Psi_B'
-# The residual / log-determinant / quadratic-form structure is untouched.
+# C_B = Phi_B * (sigmasq * exp(-d_centroid / psi)) * Phi_B'
 gpbauLoglik_new <- function(param, data) {
-
+  
   psi <- param[1]
   sigmasq <- param[2]
   be <- as.matrix(param[-(1:2)])
-
+  
   yy <- data$resp
   rr <- data$covar
-  PsiB <- data$PsiB
-
+  PhiB <- data$PhiB
+  
   Kpsi <- sigmasq * exp(-data$centroid_distmat / psi)   # r x r, over basis centroids
-  coar_covmat <- PsiB %*% Kpsi %*% t(PsiB)              # Md x Md
+  coar_covmat <- PhiB %*% Kpsi %*% t(PhiB)              # Md x Md
   ee <- yy - rr %*% be
-
+  
   logdet <- as.numeric(determinant(coar_covmat)[[1]])
   ll <- -.5 * t(ee) %*% solve(coar_covmat, ee) - .5 * logdet
-
+  
   ll
+  
+}
 
+
+
+# NEW FUNCTIONS WITH VARAIBLE CHANGE
+
+#' @title Find initial values of basis-function GPB parameters
+#'
+#' @description Basis-function version of \code{\link{findinit}}. Identical grid search,
+#'              but the coarse covariance is built as
+#'              \eqn{K_B(\psi) = \Phi_B K_\psi \Phi_B^\top} with \eqn{\Phi_B = W_B \phi(S)^\top},
+#'              instead of \eqn{W_B \exp(-d/\psi) W_B^\top} over BAU distances.
+#'
+#' @param xxb a vector of coarse-resolution data of length \eqn{M_D}.
+#' @param mod_param a list requiring \code{aggmat}, \code{Phi} (\eqn{N_D \times r}),
+#'                  and \code{centroid_distmat} (\eqn{r \times r}).
+#' @param psi_vals a vector of gridded values of the range parameter psi.
+#' @param n_sigmasq an integer to create a grid of sigmasq.
+#'
+#' @return A list with \code{ll_vals}, \code{sigmasq_vals}, \code{psi_init}, \code{sigmasq_init}.
+#'
+#' @export
+#'
+findinit_new_VARCHANGE <- function(xxb, mod_param, psi_vals, n_sigmasq) {
+  
+  
+  # aggmat: aggregate matrix W_B
+  PhiB <- mod_param$aggmat %*% mod_param$Phi
+  
+  
+  
+  # centroid_distmat: distance matrix b/w BF's
+  centroid_distmat <- mod_param$centroid_distmat
+  
+  data <- list(resp = xxb, covar = as.matrix(rep(1, length(xxb))),
+               PhiB = PhiB, centroid_distmat = centroid_distmat)
+  
+  ll_vals <- array(NA, dim = c(length(psi_vals), n_sigmasq))
+  sigmasq_vals <- array(NA, dim = c(length(psi_vals), n_sigmasq))
+  
+  # Calculate the basis-function GPB log likelihood over a grid
+  for (k in seq_along(psi_vals)) {
+    
+    # K_Ψ = exp(-𝄁c_i-c_i'𝄁/ Ψ); c_i is centroid
+    Kpsi <- exp(-centroid_distmat / psi_vals[k])
+    
+    # K_B = ɸ_B * K_Ψ * ɸ_B^T = W_B * ɸ_S * K_Ψ * ɸ_S^T * W_B^T
+    coar_covmat <- PhiB %*% Kpsi %*% t(PhiB)
+    
+    
+    # _lb, _ub: lower and upper bounds of σ^2 values to try
+    # sample variance: var(X_B) / |K_B(Ψ)|
+    ratio <- diag(coar_covmat)[1]
+    sigmasq_lb <- var(xxb) / ratio
+    sigmasq_ub <- var(xxb) / ratio * 3
+    sigmasq_seq <- seq(sigmasq_lb, sigmasq_ub, length = n_sigmasq)
+    sigmasq_vals[k, ] <- sigmasq_seq
+    
+    # inner loop: one pass per σ^2_{k, l} value to find log likelihood 
+    # under (ψ⁽⁰⁾, σ²⁽⁰⁾) pair
+    for (l in seq_along(sigmasq_seq)) {
+      param <- c(psi_vals[k], sigmasq_seq[l], mean(xxb))
+      ll_vals[k, l] <- gpbauLoglik_new(param, data)
+    }
+  }
+  
+  # find the (ψ⁽⁰⁾, σ²⁽⁰⁾) pair in ll_vals with largest log-likelihood
+  idx <- as.numeric(which(ll_vals == max(ll_vals), arr.ind = TRUE))
+  
+  # output entire matrix of candidate value pairs (ψ⁽⁰⁾, σ²⁽⁰⁾) as well
+  # as pair with highest log-likelihood
+  list(ll_vals = ll_vals,
+       sigmasq_vals = sigmasq_vals,
+       psi_init = psi_vals[idx[1]],
+       sigmasq_init = sigmasq_vals[idx[1], idx[2]])
+  
+}
+
+# log likelihood under the basis-function GPB model
+# K_B = Phi_B * (sigmasq * exp(-d_centroid / psi)) * Phi_B'
+gpbauLoglik_new_VARCHANGE <- function(param, data) {
+  
+  psi <- param[1]
+  sigmasq <- param[2]
+  be <- as.matrix(param[-(1:2)])
+  
+  yy <- data$resp
+  rr <- data$covar
+  PhiB <- data$PhiB
+  
+  Kpsi <- sigmasq * exp(-data$centroid_distmat / psi)   # r x r, over basis centroids
+  coar_covmat <- PhiB %*% Kpsi %*% t(PhiB)              # Md x Md
+  ee <- yy - rr %*% be
+  
+  logdet <- as.numeric(determinant(coar_covmat)[[1]])
+  ll <- -.5 * t(ee) %*% solve(coar_covmat, ee) - .5 * logdet
+  
+  ll
+  
 }

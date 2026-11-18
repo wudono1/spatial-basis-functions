@@ -20,7 +20,7 @@ set.seed(42)
 # current constraint for MCMC simulation to work:
 # r ( x_seq_knots * y_seq_knots) > MD (KK_x * kk_y)
 
-#setting up grid of covariance predictors
+# setting up grid of covariance predictors
 
 # 8 range values, 5 sill values
 # each (range, sill) pair is a different GP, so 40 GP's total
