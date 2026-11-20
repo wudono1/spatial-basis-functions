@@ -136,17 +136,10 @@ gpb_runtime <- system.time(
     {
       # coar_covar <- as.matrix(rep(1, Md)) from previous line
       # interpretation: modeling covariate field as const mean with spatial GP residual
-      #
-      # gpbau -> gpbau_new: dispatches to fitGPBAU_new, which builds
-      # K_B = ɸ_B K_Ψ ɸ_B' from Phi + centroid_distmat instead of
-      # W_B exp(-d/phi) W_B'. Arguments are otherwise IDENTICAL -- the wrapper
-      # takes the same prior/tuning/starting keys, and reads the extra basis
-      # inputs out of mod_param. To fit the OLD model instead, swap this one
-      # name back to gpbau() (mod_param is a superset, so it still works).
       spds:::gpbau_new_VARCHANGE(coarse_resp = coar_xx[,i,j],
                 coarse_covar = coar_covar,
                 prior = prior,
-                starting = list(phi = psi_init[i, j],
+                starting = list(psi = psi_init[i, j],
                                 sigmasq = sigmasq_init[i, j],
                                 regcoef = matrix(c(mean(coar_xx[,i,j])))),
                 tuning = tuning,

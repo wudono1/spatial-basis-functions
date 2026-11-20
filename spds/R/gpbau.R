@@ -499,7 +499,7 @@ gpbau_new_VARCHANGE <- function(coarse_resp,
   if (is.null(starting)) {
     
     starting <- list(
-      phi = mean(prior$psi_unif),
+      psi = mean(prior$psi_unif),
       sigmasq = var(xxb),
       regcoef = matrix(c(mean(xxb)))
     )
@@ -518,11 +518,11 @@ gpbau_new_VARCHANGE <- function(coarse_resp,
   psi_lo <- prior2$u_psi
   psi_hi <- prior2$v_psi
   inset  <- 0.01 * (psi_hi - psi_lo)          # 1% of the prior range
-  if (starting$phi <= psi_lo + inset || starting$phi >= psi_hi - inset) {
-    warning(paste0("starting psi (", signif(starting$phi, 4),
+  if (starting$psi <= psi_lo + inset || starting$psi >= psi_hi - inset) {
+    warning(paste0("starting psi (", signif(starting$psi, 4),
                    ") is at or near a prior bound; moving it inside. ",
                    "This usually signals a weakly identified range parameter."))
-    starting$phi <- min(max(starting$phi, psi_lo + inset), psi_hi - inset)
+    starting$psi <- min(max(starting$psi, psi_lo + inset), psi_hi - inset)
   }
   
   #----------------------------------------------------
@@ -532,7 +532,7 @@ gpbau_new_VARCHANGE <- function(coarse_resp,
   # notoriously collinear, and block-averaging makes it worse. This is a
   # WARNING, not an error -- conditioning varies with psi over the chain.
   #----------------------------------------------------
-  KB_start <- PhiB %*% exp(-centroid_distmat / starting$phi) %*% t(PhiB)
+  KB_start <- PhiB %*% exp(-centroid_distmat / starting$psi) %*% t(PhiB)
   eig <- eigen(KB_start, symmetric = TRUE, only.values = TRUE)$values
   kappa_KB <- max(eig) / min(eig)
   if (min(eig) <= 0 || kappa_KB > 1e12)

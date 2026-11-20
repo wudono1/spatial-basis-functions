@@ -457,7 +457,7 @@ List fitGPBAU_new_VARCHANGE(const arma::colvec& xB,       // coarse-resolution r
   // ---- Starting values (current state of the chain) --------------------------
   arma::colvec gam = starting["regcoef"];   // gam = gamma-tilde: (intercept gamma0, covariate coefs gamma), length p+1
   double sigmasq = starting["sigmasq"];     // sigmasq: variance parameter sigma^2
-  double psi = starting["phi"];             // psi: range parameter of exp correlation (paper's psi)
+  double psi = starting["psi"];             // psi: range parameter of exp correlation (paper's psi)
   double logit_psi = logit(psi, u_psi, v_psi); // psi mapped to the whole real line (so the RW proposal
   // stays inside (u_psi, v_psi) automatically)
   
